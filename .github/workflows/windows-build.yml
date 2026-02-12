@@ -61,14 +61,11 @@ jobs:
         run: |
           $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-static --classic          
 
-          export VCPKGRS_DYNAMIC=0
+          export VCPKGRS_DYNAMIC=1
           export VCPKGRS_TRIPLET=x64-windows
           export VCPKG_ROOT="C:/vcpkg"
 
-          export RUSTFLAGS="-L native=C:/vcpkg/installed/x64-windows/lib \
-            -C link-arg=/NODEFAULTLIB:libcmt \
-            -l dylib=msvcrt -l static=swresample -l static=swscale -l static=avutil \
-            -l dylib=strmiids -l dylib=mfplat -l dylib=mfuuid -l dylib=ole32 -l dylib=user32"
+          export RUSTFLAGS="-L native=C:/vcpkg/installed/x64-windows/lib -l dylib=msvcrt -l dylib=strmiids -l dylib=mfplat -l dylib=mfuuid -l dylib=ole32 -l dylib=user32 -l dylib=gdi32"  
           
           # Meine Patches (Bash/Sed)
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
