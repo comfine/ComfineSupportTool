@@ -1,10 +1,9 @@
 name: Windows Fast Build (Custom)
 
 on:
-  workflow_dispatch: # Ermöglicht den manuellen Start per Button
+  workflow_dispatch:
 
 env:
-  # Alle notwendigen Versionen aus deinem Original-Script
   SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
@@ -14,7 +13,6 @@ env:
   UPLOAD_ARTIFACT: "true"
 
 jobs:
-  # Wir brauchen die Bridge, damit der Rust-Code weiß, was Flutter will
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
 
@@ -50,31 +48,34 @@ jobs:
         with:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
-          components: "rustfmt"
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: C:\vcpkg
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-  
+
       - name: Install vcpkg dependencies
         shell: bash
         run: |
           $VCPKG_ROOT/vcpkg install --triplet x64-windows-static --x-install-root="$VCPKG_ROOT/installed"
-          
+
       - name: Build rustdesk with Patch
         shell: bash
+        env:
+          # Diese Pfade sind entscheidend, damit 'libavutil' gefunden wird
+          VCPKG_ROOT: C:/vcpkg
+          INCLUDE: "C:/vcpkg/installed/x64-windows-static/include;${{ env.INCLUDE }}"
+          LIB: "C:/vcpkg/installed/x64-windows-static/lib;${{ env.LIB }}"
+          PKG_CONFIG_PATH: "C:/vcpkg/installed/x64-windows-static/lib/pkgconfig"
         run: |
-          # --- DER PATCH-BLOCK: Hier brennen wir deine Daten ein ---
-          
-          # 1. Bestätigungs-Modus statt Passwort erzwingen
+          # 1. Bestätigungs-Modus statt Passwort
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
           
-          # 2. Server-URL einbauen
+          # 2. Server-URL
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/rendezvous_server": "".to_string()/rendezvous_server": "www.comfine.de".to_string()/g' {} +
           
-          # 3. Sicherheits-Key einbauen
+          # 3. Sicherheits-Key
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/key": "".to_string()/key": "WRWSwUFAJw+wfs59u1xX9Z3icu4k6MV0fX9y1nt5IXo=".to_string()/g' {} +
           
           # --- BUILD START ---
