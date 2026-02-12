@@ -61,7 +61,7 @@ jobs:
         run: |
         
           # Wir erzwingen den Classic Mode, damit vcpkg nicht wegen der vcpkg.json meckert
-          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv aom intel-mediasdk dav1d --triplet x64-windows-static --classic          
+          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv aom vpl dav1d --triplet x64-windows-static --classic          
 
           # 1. Rust-Anweisungen (Diese sind für Cargo neu)
           export VCPKGRS_DYNAMIC=0
