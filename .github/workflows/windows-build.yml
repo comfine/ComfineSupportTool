@@ -73,7 +73,7 @@ jobs:
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/key": "".to_string()/key": "WRWSwUFAJw+wfs59u1xX9Z3icu4k6MV0fX9y1nt5IXo=".to_string()/g' {} +
           
           # --- BUILD START ---
-          python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
+          python3 build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
       - name: Upload Finished EXE
