@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           # Wir erzwingen den Classic Mode, damit vcpkg nicht wegen der vcpkg.json meckert
-          $VCPKG_ROOT/vcpkg install ffmpeg:x64-windows-static --classic
+          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx --triplet x64-windows-static --classic          
           
           # 2. Deine Patches (Bash/Sed)
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
