@@ -59,9 +59,14 @@ jobs:
       - name: Build with Original Logic
         shell: bash
         run: |
+          # --- TEST-BEFEHLE ANFANG ---
+          echo "Suche nach verfügbaren Intel-Paketen..."
+          $VCPKG_ROOT/vcpkg search mfx
+          $VCPKG_ROOT/vcpkg search vpl
+          # --- TEST-BEFEHLE ENDE ---
         
           # Wir erzwingen den Classic Mode, damit vcpkg nicht wegen der vcpkg.json meckert
-          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv aom vpl dav1d --triplet x64-windows-static --classic          
+          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv aom libmfx dav1d --triplet x64-windows-static --classic          
 
           # 1. Rust-Anweisungen (Diese sind für Cargo neu)
           export VCPKGRS_DYNAMIC=0
