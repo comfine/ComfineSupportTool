@@ -165,14 +165,10 @@ jobs:
 
       - name: Build rustdesk
         run: |
-          # Konfiguration erzwingen (Deine Server-Daten)
-          $server = "DEINE_SERVER_IP_ODER_DOMAIN"
-          $key = "DEIN_PUBLIC_KEY_VOM_SERVER"
-          
-          # Hier wird die Konfiguration direkt in die Umgebung geschrieben, 
-          # die der Compiler mit einliest:
-          $env:RENDEZVOUS_SERVER = $server
-          $env:RS_PUB_KEY = $key
+          # Hier brennen wir deine Daten direkt in die Datei ein
+          find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
+          find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/rendezvous_server": "".to_string()/rendezvous_server": "www.comfine.de".to_string()/g' {} +
+          find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/key": "".to_string()/key": "WRWSwUFAJw+wfs59u1xX9Z3icu4k6MV0fX9y1nt5IXo=".to_string()/g' {} +
           
           # Windows: build RustDesk
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
