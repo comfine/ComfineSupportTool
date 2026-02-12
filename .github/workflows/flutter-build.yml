@@ -165,6 +165,15 @@ jobs:
 
       - name: Build rustdesk
         run: |
+          # Konfiguration erzwingen (Deine Server-Daten)
+          $server = "DEINE_SERVER_IP_ODER_DOMAIN"
+          $key = "DEIN_PUBLIC_KEY_VOM_SERVER"
+          
+          # Hier wird die Konfiguration direkt in die Umgebung geschrieben, 
+          # die der Compiler mit einliest:
+          $env:RENDEZVOUS_SERVER = $server
+          $env:RS_PUB_KEY = $key
+          
           # Windows: build RustDesk
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
