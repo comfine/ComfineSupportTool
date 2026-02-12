@@ -1,4 +1,4 @@
-name: Windows Fast Build (Original-Style)
+name: Windows Build
 
 on:
   workflow_dispatch:
