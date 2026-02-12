@@ -1,16 +1,15 @@
-name: Windows Fast Build (Custom)
+name: Windows Fast Build (Original-Style)
 
 on:
   workflow_dispatch:
 
 env:
+  # Diese Versionen müssen exakt zum RustDesk-Stand passen
   SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  VERSION: "1.4.5"
-  UPLOAD_ARTIFACT: "true"
 
 jobs:
   generate-bridge:
@@ -32,6 +31,13 @@ jobs:
           name: bridge-artifact
           path: ./
 
+      # Das Original nutzt dieses Tool, um vcpkg korrekt zu integrieren
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
         with:
@@ -49,37 +55,23 @@ jobs:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
 
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgDirectory: C:\vcpkg
-          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-
-      - name: Install vcpkg dependencies
+      - name: Build with Original Logic
         shell: bash
         run: |
-          $VCPKG_ROOT/vcpkg install --triplet x64-windows-static --x-install-root="$VCPKG_ROOT/installed"
-
-      - name: Build rustdesk with Patch
-        shell: bash
-        env:
-          # Diese Pfade sind entscheidend, damit 'libavutil' gefunden wird
-          VCPKG_ROOT: C:/vcpkg
-          INCLUDE: "C:/vcpkg/installed/x64-windows-static/include;${{ env.INCLUDE }}"
-          LIB: "C:/vcpkg/installed/x64-windows-static/lib;${{ env.LIB }}"
-          PKG_CONFIG_PATH: "C:/vcpkg/installed/x64-windows-static/lib/pkgconfig"
-        run: |
-          # 1. Bestätigungs-Modus statt Passwort
+          # 1. VCPKG Abhängigkeiten wie im Original installieren
+          # Das stellt sicher, dass FFmpeg im Static-Triplet vorliegt
+          $VCPKG_ROOT/vcpkg install ffmpeg:x64-windows-static
+          
+          # 2. Deine Patches (Bash/Sed)
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
-          
-          # 2. Server-URL
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/rendezvous_server": "".to_string()/rendezvous_server": "www.comfine.de".to_string()/g' {} +
-          
-          # 3. Sicherheits-Key
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/key": "".to_string()/key": "WRWSwUFAJw+wfs59u1xX9Z3icu4k6MV0fX9y1nt5IXo=".to_string()/g' {} +
           
-          # --- BUILD START ---
+          # 3. Der Build-Aufruf ohne den Punkt-Fehler
+          # Wir setzen die Variablen im selben Schritt, damit Bash sie sicher hat
+          export VCPKG_ROOT="C:/vcpkg"
           python3 build.py --portable --hwcodec --flutter --vram --skip-portable-pack
+          
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
       - name: Upload Finished EXE
