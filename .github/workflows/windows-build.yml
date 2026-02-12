@@ -58,8 +58,13 @@ jobs:
       - name: Build with Original Logic
         shell: bash
         run: |
+        
           # Wir erzwingen den Classic Mode, damit vcpkg nicht wegen der vcpkg.json meckert
-          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx --triplet x64-windows-static --classic          
+          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv --triplet x64-windows-static --classic          
+
+          # 1. Rust-Anweisungen (Diese sind für Cargo neu)
+          export VCPKGRS_DYNAMIC=0
+          export VCPKGRS_TRIPLET=x64-windows-static
           
           # 2. Deine Patches (Bash/Sed)
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
