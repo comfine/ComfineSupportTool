@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Diese Versionen müssen exakt zum RustDesk-Stand passen
   SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
@@ -31,7 +30,6 @@ jobs:
           name: bridge-artifact
           path: ./
 
-      # Das Original nutzt dieses Tool, um vcpkg korrekt zu integrieren
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
@@ -54,40 +52,37 @@ jobs:
         with:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
-          components: rustfmt  # <--- Das verhindert die Warnung
-          
-     - name: Build with Fixed Triplet Logic
+          components: rustfmt
+
+      - name: Build with Fixed Triplet Logic
         shell: bash
         run: |
-          # 1. Custom Triplet erstellen (Static Libs + Dynamic Runtime MD)
-          # Das ist die einzige Kombination, die mit Flutter UND RustDesk funktioniert
+          # 1. Custom Triplet erstellen
           mkdir -p custom-triplets
           echo "set(VCPKG_TARGET_ARCHITECTURE x64)" > custom-triplets/x64-windows-hybrid.cmake
           echo "set(VCPKG_CRT_LINKAGE dynamic)" >> custom-triplets/x64-windows-hybrid.cmake
           echo "set(VCPKG_LIBRARY_LINKAGE static)" >> custom-triplets/x64-windows-hybrid.cmake
 
-          # 2. Installation mit dem neuen Triplet
-          export VCPKG_OVERLAY_TRIPLETS=./custom-triplets
+          # 2. Installation
+          export VCPKG_OVERLAY_TRIPLETS=$(pwd)/custom-triplets
           $VCPKG_ROOT/vcpkg install ffmpeg[swresample,avresample,avdevice] opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-hybrid --classic
 
-          # 3. Pfade setzen (WICHTIG: Kein VCPKGRS_DYNAMIC=1 hier!)
+          # 3. Umgebungsvariablen
           export VCPKG_ROOT="C:/vcpkg"
           export VCPKGRS_TRIPLET=x64-windows-hybrid
-          
-          # Wir entfernen die aggressiven RUSTFLAGS und nutzen nur den Lib-Pfad
           export RUSTFLAGS="-L native=C:/vcpkg/installed/x64-windows-hybrid/lib"
 
-          # 4. Deine Patches
+          # 4. Patches
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/rendezvous_server": "".to_string()/rendezvous_server": "www.comfine.de".to_string()/g' {} +
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/key": "".to_string()/key": "WRWSwUFAJw+wfs59u1xX9Z3icu4k6MV0fX9y1nt5IXo=".to_string()/g' {} +
           
-          # 5. Build starten
+          # 5. Build
           python3 build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           
           # 6. Verschieben
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
-          
+
       - name: Upload Finished EXE
         uses: actions/upload-artifact@master
         with:
