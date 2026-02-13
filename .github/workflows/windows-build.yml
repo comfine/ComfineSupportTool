@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Diese Versionen sind fest auf deinen RustDesk-Stand abgestimmt
   SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
@@ -26,7 +25,7 @@ jobs:
           submodules: recursive
 
       - name: Restore bridge files
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v4
         with:
           name: bridge-artifact
           path: ./
@@ -43,7 +42,7 @@ jobs:
           version: ${{ env.LLVM_VERSION }}
 
       - name: Install flutter
-        uses: subosito/flutter-action@v2.12.0
+        uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -53,34 +52,36 @@ jobs:
         with:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
-          components: rustfmt
 
-      - name: Build with Original Logic
+      - name: Build and Patch
         shell: bash
         run: |
-          # 1. Abhängigkeiten installieren (Standard-Triplet wie im Original)
-          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows --classic
+          # 1. Abhängigkeiten exakt für das gesuchte Triplet installieren
+          # Das behebt den "libavutil/attributes.h" Fehler
+          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-static --classic
 
           # 2. Umgebungsvariablen setzen
           export VCPKG_ROOT="C:/vcpkg"
-          export VCPKGRS_DYNAMIC=1
+          export VCPKGRS_DYNAMIC=0
           
-          # 3. Deine Patches (Config-Anpassungen)
-          # Passwort auf Bestätigung setzen
+          # 3. Deine Anpassungen (Server, Passwort-Mode, Key)
+          # Passwort auf Bestätigung umstellen
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
-          # Server setzen
+          
+          # Eigenen Server eintragen
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/rendezvous_server": "".to_string()/rendezvous_server": "www.comfine.de".to_string()/g' {} +
-          # KEY setzen
+          
+          # DEIN KEY (wichtig!)
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/key": "".to_string()/key": "WRWSwUFAJw+wfs59u1xX9Z3icu4k6MV0fX9y1nt5IXo=".to_string()/g' {} +
 
-          # 4. Der eigentliche Build-Befehl
+          # 4. Der Build-Befehl
           python3 build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           
-          # 5. Build-Ergebnis für Upload vorbereiten
-          mv ./flutter/build/windows/x64/runner/Release ./rustdesk
+          # 5. Ordner für den Upload vorbereiten
+          mv ./flutter/build/windows/x64/runner/Release ./rustdesk-bin
 
-      - name: Upload Finished EXE
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Comfine-Support-Windows-x64
-          path: rustdesk
+          name: Comfine-Support-Tool
+          path: rustdesk-bin
