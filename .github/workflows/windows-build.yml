@@ -56,27 +56,29 @@ jobs:
       - name: Build and Patch
         shell: bash
         run: |
-          # 1. ERWEITERT: swresample hinzugefügt + alle nötigen libs
-          $VCPKG_ROOT/vcpkg install ffmpeg[swresample] opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-static --classic
+          # 1. FFmpeg mit swresample Feature installieren
+          $VCPKG_ROOT/vcpkg install ffmpeg[core,swresample,avcodec,avformat,avutil,swscale] opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-static --classic
 
-          # 2. Umgebungsvariablen
+          # 2. Linker-Fixes und Pfade
           export VCPKG_ROOT="C:/vcpkg"
-          # Wir stellen das auf 0, damit er statisch linkt (behebt die unresolved externals)
           export VCPKGRS_DYNAMIC=0
           
-          # 3. Deine Anpassungen (Server, Passwort-Mode, Key)
+          # Das hilft Rust, die Windows-System-Libs für Media Foundation zu finden
+          export RUSTFLAGS="-C target-feature=+crt-static -L native=C:/vcpkg/installed/x64-windows-static/lib"
+
+          # 3. Deine Anpassungen
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/rendezvous_server": "".to_string()/rendezvous_server": "www.comfine.de".to_string()/g' {} +
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/key": "".to_string()/key": "WRWSwUFAJw+wfs59u1xX9Z3icu4k6MV0fX9y1nt5IXo=".to_string()/g' {} +
 
-          # 4. Der Build-Befehl
+          # 4. Build ausführen
           python3 build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           
-          # 5. Ordner für den Upload vorbereiten
-          mv ./flutter/build/windows/x64/runner/Release ./rustdesk-bin
-          
+          # 5. Resultat sichern
+          mv ./flutter/build/windows/x64/runner/Release ./rustdesk-ready
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Comfine-Support-Tool
-          path: rustdesk-bin
+          name: Comfine-Support-Tool-Windows
+          path: rustdesk-ready
