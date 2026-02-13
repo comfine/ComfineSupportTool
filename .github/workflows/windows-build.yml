@@ -55,27 +55,39 @@ jobs:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
           components: rustfmt  # <--- Das verhindert die Warnung
-
-      - name: Build with Original Logic
+          
+     - name: Build with Fixed Triplet Logic
         shell: bash
         run: |
-          $VCPKG_ROOT/vcpkg install ffmpeg opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-static --classic          
+          # 1. Custom Triplet erstellen (Static Libs + Dynamic Runtime MD)
+          # Das ist die einzige Kombination, die mit Flutter UND RustDesk funktioniert
+          mkdir -p custom-triplets
+          echo "set(VCPKG_TARGET_ARCHITECTURE x64)" > custom-triplets/x64-windows-hybrid.cmake
+          echo "set(VCPKG_CRT_LINKAGE dynamic)" >> custom-triplets/x64-windows-hybrid.cmake
+          echo "set(VCPKG_LIBRARY_LINKAGE static)" >> custom-triplets/x64-windows-hybrid.cmake
 
-          export VCPKGRS_DYNAMIC=1
-          export VCPKGRS_TRIPLET=x64-windows
+          # 2. Installation mit dem neuen Triplet
+          export VCPKG_OVERLAY_TRIPLETS=./custom-triplets
+          $VCPKG_ROOT/vcpkg install ffmpeg[swresample,avresample,avdevice] opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-hybrid --classic
+
+          # 3. Pfade setzen (WICHTIG: Kein VCPKGRS_DYNAMIC=1 hier!)
           export VCPKG_ROOT="C:/vcpkg"
-
-          export RUSTFLAGS="-L native=C:/vcpkg/installed/x64-windows/lib -l dylib=msvcrt -l dylib=strmiids -l dylib=mfplat -l dylib=mfuuid -l dylib=ole32 -l dylib=user32 -l dylib=gdi32"  
+          export VCPKGRS_TRIPLET=x64-windows-hybrid
           
-          # Meine Patches (Bash/Sed)
+          # Wir entfernen die aggressiven RUSTFLAGS und nutzen nur den Lib-Pfad
+          export RUSTFLAGS="-L native=C:/vcpkg/installed/x64-windows-hybrid/lib"
+
+          # 4. Deine Patches
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/"use-password"/"use-confirmation"/g' {} +
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/rendezvous_server": "".to_string()/rendezvous_server": "www.comfine.de".to_string()/g' {} +
           find libs/hbb_common/src/ -name "config.rs" -exec sed -i 's/key": "".to_string()/key": "WRWSwUFAJw+wfs59u1xX9Z3icu4k6MV0fX9y1nt5IXo=".to_string()/g' {} +
-                             
+          
+          # 5. Build starten
           python3 build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           
+          # 6. Verschieben
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
-
+          
       - name: Upload Finished EXE
         uses: actions/upload-artifact@master
         with:
