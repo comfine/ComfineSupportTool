@@ -56,14 +56,14 @@ jobs:
       - name: Build and Patch
         shell: bash
         run: |
-          # 1. FFmpeg mit swresample Feature installieren
-          $VCPKG_ROOT/vcpkg install ffmpeg[core,swresample,avcodec,avformat,avutil,swscale] opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-static --classic
+          # 1. FFmpeg Fix: Nur existierende Features anfordern
+          $VCPKG_ROOT/vcpkg install ffmpeg[core,swresample,swscale] opus libvpx libyuv aom mfx-dispatch dav1d --triplet x64-windows-static --classic
 
           # 2. Linker-Fixes und Pfade
           export VCPKG_ROOT="C:/vcpkg"
           export VCPKGRS_DYNAMIC=0
           
-          # Das hilft Rust, die Windows-System-Libs für Media Foundation zu finden
+          # WICHTIG: Pfad zu den Libs für den Linker
           export RUSTFLAGS="-C target-feature=+crt-static -L native=C:/vcpkg/installed/x64-windows-static/lib"
 
           # 3. Deine Anpassungen
